@@ -10,14 +10,23 @@ function paramOrDefault(key: string, fallback: string) {
 
 // Decodes the JWT payload (no signature check — display/routing purposes only,
 // LiveKit itself is what actually validates the token). Used so a manually
-// pasted token's real identity/room are what we connect and display with,
-// instead of whatever was separately typed into the room/name fields above.
-function decodeTokenClaims(token: string): { identity?: string; room?: string } | null {
+// pasted token's real identity/room/role are what we connect and display
+// with, instead of whatever was separately typed/selected in the form above.
+function decodeTokenClaims(token: string): { identity?: string; room?: string; role?: Role } | null {
   try {
     const payload = token.split('.')[1]
     const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
     const claims = JSON.parse(json)
-    return { identity: claims.identity, room: claims.video?.room }
+    let role: Role | undefined
+    if (typeof claims.metadata === 'string') {
+      try {
+        const meta = JSON.parse(claims.metadata)
+        if (meta.role === 'rider' || meta.role === 'driver') role = meta.role
+      } catch {
+        // token metadata isn't JSON, or has no role — fall back to the form's selection
+      }
+    }
+    return { identity: claims.identity, room: claims.video?.room, role }
   } catch {
     return null
   }
@@ -47,10 +56,18 @@ export default function JoinScreen({ onJoined }: { onJoined: (s: Session) => voi
         if (!claims?.identity || !claims.room) {
           throw new Error('Could not read identity/room from that token — check it was pasted in full.')
         }
-        // The token's own claims are authoritative, not the room/name fields
-        // above — connecting with mismatched displayed metadata would make
-        // test results misleading.
-        onJoined({ token: manualToken, serverUrl: manualUrl, room: claims.room, identity: claims.identity, role })
+        // The token's own claims are authoritative, not the room/name/role
+        // fields above — connecting with mismatched displayed metadata would
+        // make test results misleading. Role falls back to the form's
+        // selection only when the token itself carries no role metadata
+        // (e.g. one minted outside our token server).
+        onJoined({
+          token: manualToken,
+          serverUrl: manualUrl,
+          room: claims.room,
+          identity: claims.identity,
+          role: claims.role ?? role,
+        })
         return
       }
 

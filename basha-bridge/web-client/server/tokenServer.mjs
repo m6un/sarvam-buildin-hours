@@ -26,8 +26,15 @@ if (!LIVEKIT_URL || !API_KEY || !API_SECRET) {
   process.exit(1)
 }
 
+// Loopback-only binding stops other devices from reaching this server, but a
+// browser tab on any website can still make a cross-origin fetch to
+// localhost — unrestricted CORS would let an untrusted site the developer
+// happens to have open read a signed token out of the response. Scope it to
+// local dev-server origins only (Vite's port can vary, so match any port).
+const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/
+
 const app = express()
-app.use(cors())
+app.use(cors({ origin: LOCALHOST_ORIGIN }))
 app.use(express.json())
 
 app.post('/token', async (req, res) => {
