@@ -7,7 +7,7 @@ Uses LiveKit for the room. Ships with a **dev-only token server** (`server/`) so
 ## Setup
 
 1. Create a free project at [livekit.io](https://livekit.io) (or use an existing one) — grab the project URL, API key, and API secret.
-2. `cp server/.env.example server/.env` and fill in `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`.
+2. `cp server/.env.example server/.env` and fill in `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`. `CLIENT_ORIGIN` defaults to `http://localhost:5173` (Vite's default) — only update it if Vite picks a different port (e.g. 5173 already in use), since the token server only accepts requests from this exact origin.
 3. `cp .env.example .env` (defaults already point at the local token server, no edits needed unless you move it).
 4. `npm install`
 
@@ -20,7 +20,7 @@ npm run server   # dev token server on :8787
 npm run dev      # vite dev server
 ```
 
-Open the printed Vite URL in two tabs (or two devices on the same network):
+Open the printed Vite URL in two tabs on the **same machine** (the token server is loopback-only, so a second device on the network can't reach it):
 
 - Tab 1: `?role=rider&room=demo-ride-1`
 - Tab 2: `?role=driver&room=demo-ride-1`
