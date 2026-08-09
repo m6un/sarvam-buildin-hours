@@ -9,11 +9,16 @@ import './style.css';
 const form = document.getElementById('join-form');
 const roomInput = document.getElementById('room');
 const roleInput = document.getElementById('role');
+const roleButtons = document.querySelectorAll('.role-btn');
 const tokenEndpointInput = document.getElementById('token-endpoint');
 const statusEl = document.getElementById('status');
 const remoteEl = document.getElementById('remote');
 const localEl = document.getElementById('local');
 const logEl = document.getElementById('log');
+const joinCard = document.getElementById('join-card');
+const callPanel = document.getElementById('call-panel');
+const joinButton = document.getElementById('join-button');
+const leaveButton = document.getElementById('leave-button');
 
 const defaultRoom = import.meta.env.VITE_DEFAULT_ROOM || 'basha-demo';
 const defaultTokenEndpoint = import.meta.env.VITE_TOKEN_ENDPOINT || 'http://127.0.0.1:8787/token';
@@ -21,10 +26,24 @@ const defaultTokenEndpoint = import.meta.env.VITE_TOKEN_ENDPOINT || 'http://127.
 roomInput.value = defaultRoom;
 tokenEndpointInput.value = defaultTokenEndpoint;
 
+function setRole(value) {
+  roleInput.value = value;
+  roleButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.role === value));
+}
+
+roleButtons.forEach((btn) => {
+  btn.addEventListener('click', () => setRole(btn.dataset.role));
+});
+
 const params = new URLSearchParams(window.location.search);
 if (params.get('room')) roomInput.value = params.get('room');
-if (params.get('role')) roleInput.value = params.get('role');
+if (params.get('role') === 'driver' || params.get('role') === 'customer') setRole(params.get('role'));
 if (params.get('tokenEndpoint')) tokenEndpointInput.value = params.get('tokenEndpoint');
+
+function setStatus(text, variant) {
+  statusEl.textContent = text;
+  statusEl.className = 'badge' + (variant ? ` ${variant}` : '');
+}
 
 let room;
 let role;
@@ -121,6 +140,13 @@ async function getToken({ endpoint, roomName, role }) {
   return res.json();
 }
 
+const STATE_VARIANT = {
+  connected: 'connected',
+  connecting: 'connecting',
+  reconnecting: 'connecting',
+  disconnected: 'error',
+};
+
 async function join(event) {
   event.preventDefault();
   if (room) {
@@ -129,10 +155,11 @@ async function join(event) {
     localEl.innerHTML = '';
   }
 
+  joinButton.disabled = true;
   role = roleInput.value;
   const roomName = roomInput.value.trim() || 'basha-demo';
   const endpoint = tokenEndpointInput.value.trim();
-  statusEl.textContent = 'fetching token...';
+  setStatus('fetching token…', 'connecting');
   const tokenData = await getToken({ endpoint, roomName, role });
   identity = tokenData.identity;
 
@@ -146,11 +173,11 @@ async function join(event) {
   room.on(RoomEvent.ParticipantConnected, (participant) => log(`participant connected: ${participant.identity}`));
   room.on(RoomEvent.ParticipantDisconnected, (participant) => log(`participant disconnected: ${participant.identity}`));
   room.on(RoomEvent.ConnectionStateChanged, (state) => {
-    statusEl.textContent = `${role} / ${roomName} / ${state}`;
+    setStatus(`${role} · ${roomName} · ${state}`, STATE_VARIANT[state]);
     log(`connection: ${state}`);
   });
 
-  statusEl.textContent = 'connecting...';
+  setStatus('connecting…', 'connecting');
   await room.connect(tokenData.url, tokenData.token);
   log(`connected as ${identity}`);
 
@@ -175,12 +202,35 @@ async function join(event) {
       if (publication.track) attachAudio(publication.track, publication, participant);
     });
   });
+
+  joinCard.hidden = true;
+  callPanel.hidden = false;
+  joinButton.disabled = false;
+}
+
+async function leave() {
+  if (!room) return;
+  await room.disconnect();
+  room = undefined;
+  remoteEl.innerHTML = '';
+  localEl.innerHTML = '';
+  callPanel.hidden = true;
+  joinCard.hidden = false;
+  setStatus('not connected');
 }
 
 form.addEventListener('submit', (event) => {
   join(event).catch((err) => {
     console.error(err);
-    statusEl.textContent = `error: ${err.message}`;
+    setStatus(`error: ${err.message}`, 'error');
+    log(`ERROR ${err.stack || err.message}`);
+    joinButton.disabled = false;
+  });
+});
+
+leaveButton.addEventListener('click', () => {
+  leave().catch((err) => {
+    console.error(err);
     log(`ERROR ${err.stack || err.message}`);
   });
 });
