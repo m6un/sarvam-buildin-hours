@@ -193,3 +193,18 @@
   border-color: #e11d48 !important;
   color: white !important;
 }
+
+.start-audio-button {
+  display: block;
+  width: calc(100% - 40px);
+  max-width: 480px;
+  margin: 12px auto 0;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}

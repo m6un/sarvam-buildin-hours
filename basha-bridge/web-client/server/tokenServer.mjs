@@ -11,7 +11,7 @@ import cors from 'cors'
 import { AccessToken } from 'livekit-server-sdk'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-dotenv.config({ path: path.join(__dirname, '.env') })
+dotenv.config({ path: path.join(__dirname, '.env'), quiet: true })
 
 const PORT = process.env.PORT ?? 8787
 const LIVEKIT_URL = process.env.LIVEKIT_URL
@@ -38,6 +38,7 @@ app.post('/token', async (req, res) => {
 
   const at = new AccessToken(API_KEY, API_SECRET, {
     identity,
+    ttl: '1h',
     metadata: JSON.stringify({ role: role ?? 'rider' }),
   })
   at.addGrant({
@@ -51,6 +52,9 @@ app.post('/token', async (req, res) => {
   res.json({ token, serverUrl: LIVEKIT_URL, identity })
 })
 
-app.listen(PORT, () => {
-  console.log(`Dev token server listening on http://localhost:${PORT}`)
+// Loopback-only: this issues valid room-join credentials for any room/identity
+// with no auth check, so it must never be reachable from other devices on the
+// network. Real token issuance belongs on the orchestrator once it exists.
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`Dev token server listening on http://localhost:${PORT} (loopback only)`)
 })

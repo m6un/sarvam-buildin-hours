@@ -1,6 +1,7 @@
 import {
   LiveKitRoom,
   RoomAudioRenderer,
+  StartAudio,
   useParticipants,
   useLocalParticipant,
   useConnectionState,
@@ -20,6 +21,7 @@ export default function CallView({ session, onLeave }: { session: Session; onLea
       data-lk-theme="default"
     >
       <RoomAudioRenderer />
+      <StartAudio label="Click to enable audio" className="start-audio-button" />
       <CallUI session={session} onLeave={onLeave} />
     </LiveKitRoom>
   )

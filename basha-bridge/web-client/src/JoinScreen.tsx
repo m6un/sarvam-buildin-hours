@@ -8,6 +8,21 @@ function paramOrDefault(key: string, fallback: string) {
   return params.get(key) ?? fallback
 }
 
+// Decodes the JWT payload (no signature check — display/routing purposes only,
+// LiveKit itself is what actually validates the token). Used so a manually
+// pasted token's real identity/room are what we connect and display with,
+// instead of whatever was separately typed into the room/name fields above.
+function decodeTokenClaims(token: string): { identity?: string; room?: string } | null {
+  try {
+    const payload = token.split('.')[1]
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+    const claims = JSON.parse(json)
+    return { identity: claims.identity, room: claims.video?.room }
+  } catch {
+    return null
+  }
+}
+
 export default function JoinScreen({ onJoined }: { onJoined: (s: Session) => void }) {
   const [room, setRoom] = useState(paramOrDefault('room', 'demo-ride-1'))
   const [identity, setIdentity] = useState(paramOrDefault('identity', ''))
@@ -28,7 +43,14 @@ export default function JoinScreen({ onJoined }: { onJoined: (s: Session) => voi
       // server has real API credentials, or to test against someone else's
       // already-issued token.
       if (manualToken && manualUrl) {
-        onJoined({ token: manualToken, serverUrl: manualUrl, room, identity: identity || role, role })
+        const claims = decodeTokenClaims(manualToken)
+        if (!claims?.identity || !claims.room) {
+          throw new Error('Could not read identity/room from that token — check it was pasted in full.')
+        }
+        // The token's own claims are authoritative, not the room/name fields
+        // above — connecting with mismatched displayed metadata would make
+        // test results misleading.
+        onJoined({ token: manualToken, serverUrl: manualUrl, room: claims.room, identity: claims.identity, role })
         return
       }
 
