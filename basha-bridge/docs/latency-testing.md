@@ -90,4 +90,18 @@ All test cases use existing fixtures (`fixtures/hi_pickup.wav`, `hi_otp.wav`, `k
 | TC-ECHO-02 | Same pair, offset 0% (max stress) | Same zero-leak requirement — this is a structural guarantee, not expected to degrade gracefully under stress |
 | TC-ECHO-03 | Rider track silent, driver speaks `kn_pickup.wav` | Rider-side STT produces no spurious transcript (catches raw audio bleed even without translated text to leak) |
 
+### 4. Agent-prompt barge-in (interrupt-detected → audio-actually-silent)
+
+Only applies once N1/N2 (mediation layer) ships — this is the agent's own spoken prompt being interrupted, not cross-talk between rider/driver. Metric definition: `t0` = VAD `START_SPEECH` fires on the human mic track *while* the agent's audio track is actively playing. `t1` = first moment the agent's output track amplitude drops below a silence threshold and stays there (measure at actual audio output via an amplitude/RMS check on the played track — not when the stop command was issued server-side, since already-buffered audio in the playback pipeline can continue briefly after `stop()` is called). Metric = `t1 − t0`.
+
+Proposed target: **≤ 300ms**, since this is a local client-side stop (no network round trip required) and needs to feel instantaneous to a human — treat this threshold as a proposed UX bar to negotiate with the team, not a fixed spec.
+
+| ID | Setup | Pass criteria |
+|---|---|---|
+| TC-BARGE-01 | Interrupt fired at ~20% into a synthesized agent prompt (e.g. "Please say the pickup gate...") | t1 − t0 ≤ 300ms |
+| TC-BARGE-02 | Interrupt fired at ~80% into the same prompt (near end) | t1 − t0 ≤ 300ms, and within 20% of TC-BARGE-01's result (checks stop latency doesn't depend on how much audio was already buffered/in-flight) |
+| TC-BARGE-03 | Same as TC-BARGE-01, under simulated network jitter/delay on the signaling path | t1 − t0 stays within 20% of TC-BARGE-01 — since the stop is local, it should **not** degrade with network conditions; a failure here means the "local stop" assumption is leaking a network dependency somewhere |
+| TC-BARGE-04 | Rapid double-interrupt: human interrupts, agent reopens a fresh TTS stream almost immediately, human interrupts again within 1s | No audio from the *first* interrupted stream is audible after the *second* stop (checks for stale/ghost audio from an incompletely-torn-down stream, not just timing) |
+| TC-BARGE-05 | Brief non-speech noise blip (e.g. 150ms) on the human mic while agent is speaking | Report whether it triggers a false-positive stop+reopen cycle, and the wasted latency cost if so — robustness check, not a hard pass/fail, but should be tracked since a jumpy VAD threshold makes the agent feel twitchy rather than responsive |
+
 ────────────────────────────────────────────────────────────────────────────────
