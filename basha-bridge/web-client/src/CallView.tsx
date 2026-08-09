@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -31,6 +32,14 @@ function CallUI({ session, onLeave }: { session: Session; onLeave: () => void })
   const participants = useParticipants()
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant()
   const connectionState = useConnectionState()
+  const [micError, setMicError] = useState<string | null>(null)
+
+  function toggleMicrophone() {
+    setMicError(null)
+    localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled).catch((err: unknown) => {
+      setMicError(err instanceof Error ? err.message : 'Could not access the microphone')
+    })
+  }
 
   const statusLabel =
     connectionState === ConnectionState.Connected
@@ -64,11 +73,10 @@ function CallUI({ session, onLeave }: { session: Session; onLeave: () => void })
         )}
       </ul>
 
+      {micError && <p className="error">{micError}</p>}
+
       <div className="controls">
-        <button
-          onClick={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
-          className={isMicrophoneEnabled ? '' : 'muted'}
-        >
+        <button onClick={toggleMicrophone} className={isMicrophoneEnabled ? '' : 'muted'}>
           {isMicrophoneEnabled ? 'Mute' : 'Unmute'}
         </button>
         <button onClick={onLeave} className="leave-button">

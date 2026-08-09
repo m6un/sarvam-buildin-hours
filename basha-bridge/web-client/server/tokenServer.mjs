@@ -38,10 +38,15 @@ const app = express()
 app.use(cors({ origin: CLIENT_ORIGIN }))
 app.use(express.json())
 
+const VALID_ROLES = new Set(['rider', 'driver'])
+
 app.post('/token', async (req, res) => {
   const { room, identity, role } = req.body ?? {}
   if (!room || !identity) {
     return res.status(400).json({ error: 'room and identity are required' })
+  }
+  if (role !== undefined && !VALID_ROLES.has(role)) {
+    return res.status(400).json({ error: "role must be 'rider' or 'driver'" })
   }
 
   const at = new AccessToken(API_KEY, API_SECRET, {

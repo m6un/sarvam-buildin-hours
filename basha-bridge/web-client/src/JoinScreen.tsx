@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Role, Session } from './App'
 
 const TOKEN_ENDPOINT = import.meta.env.VITE_TOKEN_ENDPOINT ?? 'http://localhost:8787/token'
@@ -6,6 +6,19 @@ const TOKEN_ENDPOINT = import.meta.env.VITE_TOKEN_ENDPOINT ?? 'http://localhost:
 function paramOrDefault(key: string, fallback: string) {
   const params = new URLSearchParams(window.location.search)
   return params.get(key) ?? fallback
+}
+
+function paramRole(fallback: Role): Role {
+  const value = new URLSearchParams(window.location.search).get('role')
+  return value === 'rider' || value === 'driver' ? value : fallback
+}
+
+// Includes a random component, not just a millisecond timestamp — two tabs
+// joining with the same role at nearly the same instant (plausible when
+// both are following a written test script) would otherwise generate
+// colliding identities, and LiveKit disconnects the earlier one silently.
+function randomIdentity(role: Role) {
+  return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 // Decodes the JWT payload (no signature check — display/routing purposes only,
@@ -35,12 +48,17 @@ function decodeTokenClaims(token: string): { identity?: string; room?: string; r
 export default function JoinScreen({ onJoined }: { onJoined: (s: Session) => void }) {
   const [room, setRoom] = useState(paramOrDefault('room', 'demo-ride-1'))
   const [identity, setIdentity] = useState(paramOrDefault('identity', ''))
-  const [role, setRole] = useState<Role>((paramOrDefault('role', 'rider') as Role) ?? 'rider')
+  const [role, setRole] = useState<Role>(paramRole('rider'))
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showManual, setShowManual] = useState(false)
   const [manualToken, setManualToken] = useState('')
   const [manualUrl, setManualUrl] = useState('')
+
+  // Stable per role (not recomputed on every render), and reused as the
+  // actual fallback identity on submit — so the preview shown to the user
+  // is always exactly what gets used, not a different Date.now() call.
+  const generatedIdentity = useMemo(() => randomIdentity(role), [role])
 
   async function join(e: React.FormEvent) {
     e.preventDefault()
@@ -51,7 +69,10 @@ export default function JoinScreen({ onJoined }: { onJoined: (s: Session) => voi
       // instead of hitting the dev token server. Useful before the token
       // server has real API credentials, or to test against someone else's
       // already-issued token.
-      if (manualToken && manualUrl) {
+      if (manualToken || manualUrl) {
+        if (!manualToken || !manualUrl) {
+          throw new Error('Manual token needs both the server URL and the token pasted in.')
+        }
         const claims = decodeTokenClaims(manualToken)
         if (!claims?.identity || !claims.room) {
           throw new Error('Could not read identity/room from that token — check it was pasted in full.')
@@ -74,7 +95,7 @@ export default function JoinScreen({ onJoined }: { onJoined: (s: Session) => voi
       const res = await fetch(TOKEN_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ room, identity: identity || `${role}-${Date.now()}`, role }),
+        body: JSON.stringify({ room, identity: identity || generatedIdentity, role }),
       })
       if (!res.ok) {
         throw new Error(`Token server returned ${res.status}`)
@@ -129,7 +150,7 @@ export default function JoinScreen({ onJoined }: { onJoined: (s: Session) => voi
           <input
             value={identity}
             onChange={(e) => setIdentity(e.target.value)}
-            placeholder={`${role}-${Date.now()}`}
+            placeholder={generatedIdentity}
           />
         </label>
 
