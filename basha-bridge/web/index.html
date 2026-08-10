@@ -3,45 +3,90 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Basha Bridge Phase 3</title>
+    <title>Basha Bridge: the silent AI mediator for cross-language rides</title>
+    <meta
+      name="description"
+      content="Basha Bridge listens quietly while rider and driver talk, and relays live in both directions, in each person's own language, only when the conversation actually needs it."
+    />
   </head>
   <body>
     <div id="app">
-      <h1>Basha Bridge — Phase 3</h1>
-      <p>Full-duplex live relay: <strong>driver Kannada ↔ customer Hindi</strong></p>
-      <form id="join-form">
-        <label>
-          Room
-          <input id="room" value="basha-demo" />
-        </label>
-        <label>
-          Role
-          <select id="role">
-            <option value="driver">driver</option>
-            <option value="customer">customer</option>
-          </select>
-        </label>
-        <label>
-          Token endpoint
-          <input id="token-endpoint" value="http://127.0.0.1:8787/token" />
-        </label>
-        <button type="submit">Join</button>
-      </form>
-      <div id="status">not connected</div>
-      <div id="panels">
-        <section>
-          <h2>Local</h2>
-          <div id="local"></div>
-        </section>
-        <section>
-          <h2>Remote audio</h2>
-          <div id="remote"></div>
-        </section>
-        <section>
-          <h2>Events</h2>
+      <header class="hero">
+        <div class="wordmark">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          Basha Bridge
+        </div>
+        <h1>The silent AI mediator for rides across a language gap.</h1>
+        <p class="lede">
+          It listens quietly while rider and driver talk. When the languages don't match, it relays live,
+          both ways, in each person's own voice and language, so pickup coordination doesn't fall apart.
+        </p>
+        <p class="stack-note">Built end-to-end on Sarvam AI · Saaras STT · Mayura translate · Bulbul TTS</p>
+      </header>
+
+      <main class="card" id="join-card">
+        <div class="card-head">
+          <h2>Try a live call</h2>
+          <span class="badge" id="status">not connected</span>
+        </div>
+
+        <form id="join-form">
+          <div class="field">
+            <span class="field-label">I am the</span>
+            <div class="role-toggle" role="radiogroup" aria-label="Role">
+              <button type="button" class="role-btn active" data-role="customer">Customer</button>
+              <button type="button" class="role-btn" data-role="driver">Driver</button>
+            </div>
+            <input type="hidden" id="role" value="customer" />
+          </div>
+
+          <div class="field">
+            <label for="room" class="field-label">Room</label>
+            <input id="room" value="basha-demo" autocomplete="off" />
+          </div>
+
+          <details class="advanced">
+            <summary>Advanced</summary>
+            <div class="field">
+              <label for="token-endpoint" class="field-label">Token endpoint</label>
+              <input id="token-endpoint" value="http://127.0.0.1:8787/token" autocomplete="off" />
+            </div>
+          </details>
+
+          <button type="submit" class="join-button" id="join-button">Join call</button>
+        </form>
+
+        <p class="hint">
+          Open this page in two tabs: one <code>?role=customer</code>, one <code>?role=driver</code>, with the
+          same room to test both sides of a call. Headphones recommended, since both sides relay live and
+          speaker audio can feed back into the mic.
+        </p>
+      </main>
+
+      <section class="call-panel" id="call-panel" hidden>
+        <div class="card-head">
+          <h2>On the call</h2>
+          <button type="button" class="leave-button" id="leave-button">Leave</button>
+        </div>
+        <div id="panels">
+          <section class="panel">
+            <h3>You</h3>
+            <div id="local"></div>
+          </section>
+          <section class="panel">
+            <h3>Remote audio</h3>
+            <div id="remote"></div>
+          </section>
+        </div>
+        <details class="dev-log">
+          <summary>Developer log</summary>
           <pre id="log"></pre>
-        </section>
-      </div>
+        </details>
+      </section>
+
+      <footer class="footer">
+        <a href="https://github.com/m6un/sarvam-buildin-hours" target="_blank" rel="noreferrer">Source on GitHub</a>
+      </footer>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>
